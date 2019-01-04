@@ -11,7 +11,18 @@ module NononoSender
       @t = Thread.new do
         @sender.accept do |event|
           recv.each do |r|
-            r.recieve(event)
+            max_count = @sender.retryable? ? @sender.retry_count : 0
+            count = 0
+            begin
+              count += 1
+              r.recieve(event)
+            rescue StandardError => e
+              puts e
+              if max_count > count
+                sleep 3
+                retry
+              end
+            end
           end
         end
       end
@@ -43,6 +54,14 @@ module NononoSender
 
   def alive?
     defined? @starter && @start.alive?
+  end
+
+  def retryable?
+    false
+  end
+
+  def retry_count
+    0
   end
 
   def accept(&block); end
